@@ -1,20 +1,87 @@
 package lk.ijse.controller;
 
+import javafx.collections.FXCollections;
+import javafx.collections.ObservableList;
 import javafx.event.ActionEvent;
+import javafx.fxml.FXMLLoader;
+import javafx.scene.Parent;
+import javafx.scene.Scene;
 import javafx.scene.control.Alert;
+import javafx.scene.control.TableColumn;
+import javafx.scene.control.TableView;
 import javafx.scene.control.TextField;
+import javafx.scene.control.cell.PropertyValueFactory;
+import javafx.scene.layout.AnchorPane;
+import javafx.stage.Stage;
 import lk.ijse.db.DbConnection;
+import lk.ijse.dto.CustomerDto;
+import lk.ijse.dto.tm.CustomerTM;
 
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
+import java.io.IOException;
+import java.sql.*;
+import java.util.ArrayList;
+import java.util.List;
 
 public class CustomerFormController {
     public TextField txtId;
     public TextField txtName;
     public TextField txtaddress;
     public TextField txtMob;
+    public TableView<CustomerTM> tbcustomer;
+    public TableColumn<?, ?> colid;
+    public TableColumn<?, ?> colname;
+    public TableColumn<?, ?> coladdress;
+    public TableColumn<?, ?> coltelephone;
+    public AnchorPane root;
+
+    public void initialize() throws SQLException {
+        System.out.println("Item Form Just Loaded!");
+
+        setCellValueFactory();
+        List<CustomerDto> customerDtos = loadAllCustomers();
+
+        setTableData(customerDtos);
+    }
+
+    private void setTableData(List<CustomerDto> customerDtos) {
+        ObservableList<CustomerTM> tms = FXCollections.observableArrayList();
+
+        for (CustomerDto dto : customerDtos){
+            var tm = new CustomerTM(dto.getId(), dto.getName(),dto.getAddress(), dto.getTel());
+            tms.add(tm);
+        }
+        tbcustomer.setItems(tms);
+
+    }
+
+    private List<CustomerDto> loadAllCustomers() throws SQLException {
+        Connection connection = DbConnection.getInstance().getConnection();
+
+        String sql = "SELECT * FROM customer";
+        Statement statement = connection.createStatement();
+        ResultSet set = statement.executeQuery(sql);
+
+        List<CustomerDto> dtos = new ArrayList<>();
+
+        while (set.next()){
+            String id = set.getString(1);
+            String name = set.getString(2);
+            String address = set.getString(3);
+            String tel = set.getString(4);
+
+            var customer = new CustomerDto(id, name, address, tel);
+            dtos.add(customer);
+        }
+        return dtos;
+    }
+
+    private void setCellValueFactory() {
+        colid.setCellValueFactory(new PropertyValueFactory<>("id"));
+        colname.setCellValueFactory(new PropertyValueFactory<>("name"));
+        coladdress.setCellValueFactory(new PropertyValueFactory<>("address"));
+        coltelephone.setCellValueFactory(new PropertyValueFactory<>("tel"));
+
+    }
 
     public void btnSaveOnAction(ActionEvent actionEvent) {
         String id = txtId.getText();
@@ -107,6 +174,7 @@ public class CustomerFormController {
             if (isUpdated){
                 clear();
                 new Alert(Alert.AlertType.CONFIRMATION, "customer updated!").show();
+
             }
 
         } catch (SQLException e) {
@@ -135,5 +203,15 @@ public class CustomerFormController {
             new Alert(Alert.AlertType.ERROR, e.getMessage()).show();
         }
 
+    }
+
+    public void btnBackOnAction(ActionEvent actionEvent) throws IOException {
+        Parent rootNode = FXMLLoader.load(this.getClass().getResource("/view/dashboard.fxml"));
+
+        Scene scene = new Scene(rootNode);
+        Stage stage = (Stage) this.root.getScene().getWindow();
+        stage.setTitle("Dashboard");
+        stage.setScene(scene);
+        stage.show();
     }
 }
